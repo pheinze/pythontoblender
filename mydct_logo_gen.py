@@ -35,14 +35,14 @@ def resolve_file_path(filename):
         if os.path.exists(full_path):
             print(f"Found {filename} at: {full_path}")
             return full_path
-
+    
     # 2. Check current working directory
     cwd = os.getcwd()
     full_path = os.path.join(cwd, filename)
     if os.path.exists(full_path):
         print(f"Found {filename} in CWD: {full_path}")
         return full_path
-
+        
     return None
 
 # ------------------------------------------------------------------------------
@@ -52,18 +52,18 @@ def parse_svg_path(d_string):
     d_string = d_string.replace(',', ' ')
     for cmd in ['M', 'L', 'Z', 'm', 'l', 'z']:
         d_string = d_string.replace(cmd, f' {cmd} ')
-
+    
     tokens = d_string.split()
     polygons = []
     current_poly = []
-
+    
     i = 0
     current_x, current_y = 0.0, 0.0
-
+    
     while i < len(tokens):
         cmd = tokens[i]
-
-        if cmd == 'M':
+        
+        if cmd == 'M': 
             if current_poly:
                 polygons.append(current_poly)
                 current_poly = []
@@ -115,25 +115,25 @@ def load_svg_data(filepath):
     tree = ET.parse(filepath)
     root = tree.getroot()
     ns = {'svg': 'http://www.w3.org/2000/svg'}
-
+    
     paths = root.findall('.//svg:path', ns)
     if not paths:
         paths = root.findall('.//path')
-
+        
     shapes = []
     for p in paths:
         d = p.get('d')
         transform = p.get('transform')
         tx, ty = extract_transform_translate(transform)
         polys = parse_svg_path(d)
-
+        
         offset_polys = []
         for poly in polys:
             new_poly = []
             for (px, py) in poly:
                 final_x = px + tx
                 final_y = py + ty
-                new_poly.append((final_x, -final_y))
+                new_poly.append((final_x, -final_y)) 
             offset_polys.append(new_poly)
         shapes.append(offset_polys)
     return shapes
@@ -157,14 +157,14 @@ def create_curve_from_points(name, polys):
     curve_data.extrude = EXTRUSION_DEPTH
     curve_data.bevel_depth = BEVEL_DEPTH
     curve_data.bevel_resolution = 4
-
+    
     for points in polys:
         spline = curve_data.splines.new('POLY')
         spline.use_cyclic_u = True
         spline.points.add(len(points) - 1)
         for i, (x, y) in enumerate(points):
             spline.points[i].co = (x * SCALE_FACTOR, y * SCALE_FACTOR, 0.0, 1.0)
-
+            
     obj = bpy.data.objects.new(name, curve_data)
     bpy.context.collection.objects.link(obj)
     return obj
@@ -174,12 +174,12 @@ def create_material(name, hex_color, roughness=0.4):
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
     bsdf = nodes.get("Principled BSDF")
-
+    
     r = int(hex_color[0:2], 16) / 255.0
     g = int(hex_color[2:4], 16) / 255.0
     b = int(hex_color[4:6], 16) / 255.0
     color = (pow(r, 2.2), pow(g, 2.2), pow(b, 2.2), 1.0)
-
+    
     bsdf.inputs['Base Color'].default_value = color
     bsdf.inputs['Roughness'].default_value = roughness
     return mat
@@ -187,7 +187,7 @@ def create_material(name, hex_color, roughness=0.4):
 def get_bmesh_bbox(objects):
     min_x, min_y, min_z = float('inf'), float('inf'), float('inf')
     max_x, max_y, max_z = float('-inf'), float('-inf'), float('-inf')
-
+    
     bpy.context.view_layer.update()
     for obj in objects:
         for corner in obj.bound_box:
@@ -203,7 +203,7 @@ def get_bmesh_bbox(objects):
 def main():
     # 1. Resolve File Path
     svg_path = resolve_file_path(SVG_FILENAME)
-
+    
     if not svg_path:
         msg = f"ERROR: Could not find '{SVG_FILENAME}'. Please save your .blend file in the same folder as the SVG."
         print(msg)
@@ -228,33 +228,33 @@ def main():
         bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0,0,0))
         parent = bpy.context.active_object
         parent.name = "MYDCT_Logo_Group"
-
+        
         for obj in logo_objs:
             obj.parent = parent
-
+        
         parent.rotation_euler = (math.radians(90), 0, 0)
-
+        
         (min_pos, max_pos) = get_bmesh_bbox(logo_objs)
         center_x = (min_pos[0] + max_pos[0]) / 2
         center_y = (min_pos[1] + max_pos[1]) / 2
-
+        
         parent.location.x -= center_x
-        parent.location.y -= center_y
-        parent.location.z -= min_pos[2]
-
+        parent.location.y -= center_y 
+        parent.location.z -= min_pos[2] 
+        
         # Floor
         bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
         floor = bpy.context.active_object
         floor.name = "Infinity_Floor"
         floor.data.materials.append(mat_white)
-
+        
         # Lighting
         bpy.ops.object.light_add(type='AREA', location=(0, -20, 10))
         key = bpy.context.active_object
         key.data.energy = 5000
         key.data.size = 10
         key.rotation_euler = (math.radians(60), 0, 0)
-
+        
         bpy.ops.object.camera_add(location=(0, -40, 5))
         cam = bpy.context.active_object
         cam.rotation_euler = (math.radians(85), 0, 0)
